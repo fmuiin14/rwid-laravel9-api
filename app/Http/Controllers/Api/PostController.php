@@ -6,6 +6,7 @@ use App\Models\Post;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\PostResource;
+use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
@@ -13,9 +14,31 @@ class PostController extends Controller
 {
     public function index()
     {
-        $posts = Post::orderBy("id", "asc")->get();
+        $slug = 'data:list';
+        $cached = Redis::get('posts:'.$slug);
 
-        return new PostResource(true, 'List Data Posts', $posts);
+        if(isset($cached)) {
+            $posts = json_decode($cached, FALSE);
+
+            // return response()->json([
+            //     'status_code' => 200,
+            //     'message' => 'data dari redis',
+            //     'data' => $posts
+            // ]);
+            return new PostResource(true, 'Data REDIS', $posts);
+        } else {
+            $posts = Post::orderBy("id", "asc")->get();
+            Redis::set('posts:data:list', $posts, 'EX', 120);
+
+            // return response()->json([
+            //     'status_code' => 200,
+            //     'message' => 'data dari db',
+            //     'data' => $posts
+            // ]);
+            return new PostResource(true, 'Data DB', $posts);
+        }
+
+
     }
 
     public function store (Request $request)
